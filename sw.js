@@ -16,7 +16,7 @@
  * never change within an event; re-fetching them on a bad connection is the
  * one thing guaranteed to ruin this.
  */
-var CACHE = 'plantpicks-202608260849';
+var CACHE = 'plantpicks-202608260918';
 var SHELL = ['./', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', function (e) {
@@ -64,17 +64,31 @@ self.addEventListener('fetch', function (e) {
     return;
   }
 
+  /* ⚑ caches.open(CACHE).match — NOT the bare caches.match.
+     caches.match() searches EVERY cache in the origin and returns the first
+     hit, and "first" is the OLDEST cache, not this deploy's. That silently
+     defeated the entire per-deploy stamp: a photo URL is stable
+     ("photos/t/29.jpg") while its CONTENT changes the moment the plant list is
+     renumbered, so while yesterday's cache still existed — and its deletion in
+     activate races the images the page is already loading — every thumbnail
+     came back as yesterday's plant.
+     Caryn caught it on her phone, 2026-08-26: the card for 29 showed the photo
+     of 33, but opening 29 showed the right plant. The grid uses thumbnails,
+     which had all been warmed the day before; the full-size images had not, so
+     those fetched fresh and were correct. Two different answers for the same
+     plant on one screen.
+     Scoped to this deploy's cache, a renumbered photo can no longer be served
+     out of an older one — which is what the stamp was always for. */
   e.respondWith(
-    caches.match(req).then(function (cached) {
-      if (cached) return cached;
-      return fetch(req).then(function (res) {
-        if (res && res.ok) {
-          var copy = res.clone();
-          caches.open(CACHE).then(function (c) { c.put(req, copy); });
-        }
-        return res;
-      }).catch(function () {
-        return cached || Response.error();
+    caches.open(CACHE).then(function (c) {
+      return c.match(req).then(function (cached) {
+        if (cached) return cached;
+        return fetch(req).then(function (res) {
+          if (res && res.ok) c.put(req, res.clone());
+          return res;
+        }).catch(function () {
+          return cached || Response.error();
+        });
       });
     })
   );
