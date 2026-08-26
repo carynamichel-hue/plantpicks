@@ -16,7 +16,7 @@
  * never change within an event; re-fetching them on a bad connection is the
  * one thing guaranteed to ruin this.
  */
-var CACHE = 'plantpicks-202608260950';
+var CACHE = 'plantpicks-202608261009';
 var SHELL = ['./', './manifest.webmanifest', './icon.svg'];
 
 self.addEventListener('install', function (e) {
